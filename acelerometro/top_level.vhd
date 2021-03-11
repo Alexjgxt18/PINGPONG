@@ -6,6 +6,7 @@ entity top_level is
 	port(
 		clk50MHz : in std_logic;
 		rst 		: in std_logic;
+		rst_fsm	: in std_logic;
 		mosi		: out std_logic;
 		miso 		: in std_logic;
 		sclk 		: out std_logic;
@@ -32,7 +33,7 @@ entity top_level is
 --		
 --		pol		: in std_logic;
 --		pha		: in std_logic;
---		bytes		: in std_logic_vector (1 downto 0);
+--		bytes		: in std_log<ic_vector (1 downto 0);
 		
 		
 		led0     : out std_logic_vector(6 downto 0);
@@ -58,6 +59,8 @@ end top_level;
 architecture STR of top_level is
 
 	signal CLK_DIV : std_logic; 
+	 Type state_type is (idle, start, send, stop); 
+	signal estados : state_type; 
 	signal go : std_logic;
 	signal pol : std_logic;
 	signal pha : std_logic;
@@ -207,23 +210,40 @@ begin
 			end if;
 		end process; 
 		
-		process(CLK_DIV)
-		
-		variable databit : integer range 0 to 8; 
-		variable dataCopy : std_logic_vector (7 downto 0);
 
-		begin	
-		dataCopy := accel_data(7 downto 0); 
-		if(rising_edge(CLK_DIV)) then
-		  TX <= dataCopy(dataBit); 
-		  if (dataBit = 7) then 
-			 databit :=0;
-		  else 
-			 dataBit := dataBit + 1; 
-		  end if;
-		 end if;
-	  end process;
+  process (CLK_DIV)
+  variable databit : integer range 0 to 8; 
+  variable dataCopy : std_logic_vector (7 downto 0); 
+  begin
+  if rst_fsm = '1' then 
+      TX<= '1';
+      estados <= idle; 
+    elsif rising_edge (CLK_DIV) then   
+      case estados is 
+        when idle => 
+			TX<='1';
+			dataBit:=0;
+			estados <= start; 
+ 
+      when start => 
+        TX <= '0'; 
+        estados <= send; 
+        dataCopy := accel_data(7 downto 0); 
+      when send => 
+        TX <= dataCopy (dataBit); 
+        if (dataBit = 7) then 
+          estados <= stop; 
+        else 
+          estados <= estados; 
+          dataBit := dataBit + 1; 
+        end if; 
+      when stop => 
+        TX <= '1';
+        estados <= idle;
 
+      end case; 
+  end if; 
+end process;
 	
 	
 	

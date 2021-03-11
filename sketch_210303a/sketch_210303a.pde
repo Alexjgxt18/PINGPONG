@@ -5,10 +5,13 @@ Barra barraizquierda;
 int puntoizquierda=0;
 int puntoderecha=0;
 import processing.serial.*;
+import java.util.List;
+import java.text.*;
 Serial myPort;                       // The serial port
 int[] serialInArray = new int[3];    // Where we'll put what we receive
 int serialCount = 0;                 // A count of how many bytes we receive
-boolean firstContact = false;
+boolean newData = false;
+float inByte;         // Incoming serial data
 
 
 void setup() {
@@ -24,7 +27,8 @@ void setup() {
 //    println(Serial.list());
 
     String portName = Serial.list()[0];
-    myPort = new Serial(this, portName, 9600);
+    myPort = new Serial(this, "COM3", 9600);
+    myPort.bufferUntil('\n');
     
 }
 
@@ -109,35 +113,27 @@ void draw() {
       barraizquierda.movey=0;
     }
   }
-  void serialEvent(Serial myPort) {
-    // read a byte from the serial port:
-    int inByte = myPort.read();
-    // if this is the first byte received, and it's an A, clear the serial
-    // buffer and note that you've had first contact from the microcontroller.
-    // Otherwise, add the incoming byte to the array:
-    if (firstContact == false) {
-      if (inByte == 'A') {
-        myPort.clear();          // clear the serial port buffer
-        firstContact = true;     // you've had first contact from the microcontroller
-        myPort.write('A');       // ask for more
-      }
+  void serialEvent (Serial myPort) {
+  //print(myPort);
+  // get the ASCII string:
+  String inString = myPort.readStringUntil('\n');
+  //print(inString);
+  StringBuffer newString = new StringBuffer(inString);
+  newString.replace(0,1,"");
+  print(newString);
+  String newString1=newString.toString();
+  if (newString1 != null) {
+    newString1 = trim(newString1);                // trim off whitespaces.
+    inByte = float(newString1);           // convert to a number.
+    if (inByte < 127){
+      barraderecha.movey=-5;
+      barraizquierda.movey=5;
     }
-    else {
-      // Add the latest byte from the serial port to array:
-      serialInArray[serialCount] = inByte;
-      serialCount++;
-
-      // If we have 3 bytes:
-      if (serialCount > 2 ) {
-        //Read the potentiometer values and map them to paddle y locations
-        barraizquierda.dl = map(serialInArray[0], 0, 255, barraizquierda.dr/2, height-barraizquierda.dr/2);
-        barraderecha.dl = map(serialInArray[1], 0, 255, barraderecha.dr/2, height-barraderecha.dr/2);
-
-        // Send a capital A to request new sensor readings:
-        myPort.write('A');
-        // Reset serialCount:
-        serialCount = 0;
-      }
+    if (inByte > 127){
+      barraderecha.movey=5;
+      barraizquierda.movey=-5;
     }
+    newData = true; 
+  }
 }
   
